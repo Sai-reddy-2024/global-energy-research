@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.pyc
+.env
+# Third-party raw downloads stay local (licence terms; size). Keep the folder READMEs.
+ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**
+!ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**/
+!ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**/_README.md
