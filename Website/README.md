@@ -9,7 +9,7 @@ A static website built from the research in `../ENERGY ANALYSIS`. Open `index.ht
 - `data.html`: all 19 charts (hover for values, "Show data" for tables) and the Key Indicators tables
 - `companies.html`: the upstream company reference tables and a market-value chart
 - `review.html`: the October market review (archive)
-- `about.html`: about, method, and data sources and licences. **Fill in the bracketed placeholders (name, bio, contact).**
+- `about.html`: about, method, and data sources and licences. **Add your contact details (email or LinkedIn) where the bracketed placeholder is.**
 
 ## Editing the overview
 The headline, the five calls and the watch list are in `_build/homepage.md`. Edit that file, then rebuild.

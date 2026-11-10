@@ -6,7 +6,7 @@ Each call has: title, link (section page), and body text (Markdown).
 -->
 edition: November 2026
 headline: Crude is healing. Gas, diesel and power are not.
-lede: Eight months into the Iran war, crude flows are close to pre-war levels and oil prices are falling on deal hopes. The squeeze has moved to European gas, diesel and the power grid. This is my view of where the 2026 energy shock goes next, with the research and data behind it.
+lede: Eight months into the Iran war, crude flows are close to pre-war levels and oil prices are falling on deal hopes. The squeeze has moved to gas in Europe and Asia, to diesel, and to the power grid, and the demand loss is falling on Asia and Europe rather than the US. This is my view of where the 2026 energy shock goes next, with the research and data behind it.
 
 ## call
 title: Oil is pricing a reopening
@@ -19,19 +19,19 @@ link: midstream.html
 EU gas storage was 72% full on 9 Nov against 82% a year earlier, the lowest for early November since at least 2021. Two damaged Qatari LNG trains need about three years to repair, and TTF is up about 164% y/y. *View:* a cold December, not oil, is the main upside price risk this winter.
 
 ## call
-title: Diesel is still the tight barrel
+title: Diesel is tight, and the demand loss is Asian
 link: downstream.html
-The NY Harbor 3-2-1 crack averaged $52 in October against a pre-war norm of $20–30. US distillate stocks are 11% lower y/y and retail diesel is $6.13/gal (+60%). *View:* complex North American refiners running at 94.5% remain the clearest winners.
+China's oil product demand fell 20% y/y in August and its refinery runs 17%; Indonesia fell 24% and South Korea 11% (JODI). US demand was flat while US runs rose 7% as refiners exported into the shortage, and the NY Harbor 3-2-1 crack averaged $52 in October against a pre-war norm of $20–30. *View:* export-capable Atlantic Basin refiners are the clearest winners, and Asian demand is what recovers first if Hormuz reopens.
 
 ## call
-title: Shale is the swing supplier, at a higher cost
+title: The Americas are the swing supply
 link: upstream.html
-A new US shale well needs $66/bbl WTI on average, and Midland's breakeven is up 49% since 2017. *View:* at $90 every basin is profitable, but the reopening case (mid-$60s by 2027) pushes new wells to breakeven and slows US growth.
+Outside the Gulf, crude supply grew through the war: Brazil reached 4.47 mb/d in June (+19% y/y), Guyana 0.91 mb/d (+41%) and Canada and Mexico are also up, while Saudi Arabia (−36%) and Kuwait (−20%) carry the loss. A new US shale well needs $66/bbl WTI. *View:* at $90 every basin pays, but the reopening case (mid-$60s by 2027) slows shale first, while offshore Brazil and Guyana keep growing.
 
 ## call
 title: Power is the structural story
 link: downstream.html
-Solar matched nuclear at 8.8% of world electricity in 2025 and coal fell to 33.2% (Ember). Global power-sector CO₂ was flat. US generation grew 6.8% y/y in August, with data centres pulling demand. *View:* electrification is now sold as energy security, which keeps transition spending resilient through the shock.
+Wind and solar supplied 18.7% of world electricity in the 12 months to August, up 1.6 points, and solar alone (9.8%) is now above wind and nuclear (Ember). Coal still supplies a third of world power and over half of Asia's, and gas-heavy systems such as Japan, the UK, Italy and Taiwan are the ones exposed to the LNG shock. *View:* electrification is now sold as energy security, which keeps transition spending resilient through the shock.
 
 ## watch
 - **10–11 Nov:** US–Iran talks with mediators in Abu Dhabi

@@ -140,12 +140,23 @@ def clean_brief(md):
             continue
         if re.match(r"^\s*-?\s*\*?Inferred:\*? Dubai and Murban", line) or "Dubai and Murban trade above Brent" in line:
             continue
-        if re.match(r"^(New data files?|New files in this section)", line):
+        if re.match(r"^(New data files?|New files in this section|US detail files?|Two new workbooks lead|The US refining and power workbooks stay)", line):
             continue
         if re.match(r"^- `", line):
             continue
         line = re.sub(r"\s*Raw CSVs? (?:is|are) in [\w./ ]+?\.(?=\s|$)", "", line)
         line = re.sub(r"\s*\(tables and report saved in [^)]*\)", "", line)
+        line = re.sub(r"New workbook: `[^`]+`\.\s*It ", "The data behind this section ", line)
+        line = re.sub(r"This section and the new workbook `[^`]+` now anchor the brief\. The workbook ", "The data behind this section ", line)
+        line = re.sub(r";\s*the US weekly and macro workbooks stay in [\d./]+ as detail\.", ".", line)
+        line = re.sub(r"\s*\(v\d+: [^)]*\)", "", line)
+        line = re.sub(r"\s*\(new lead section\)", "", line)
+        if line.startswith("- ") and out and out[-1].strip() and not re.match(r"^\s*(- |\d+\. |\|)", out[-1]):
+            out.append("")
+        line = re.sub(r"\s*(?:The sheet|Sheets) `[^`]+`(?: and `[^`]+`)? [^.]*\.", "", line)
+        line = re.sub(r"\s*Power-sector CO₂ for the last 12 months by region and country is in the 04\.2 global power workbook \(Ember\)\.", "", line)
+        line = re.sub(r"\s*The US [\w-]+ workbook stays as detail\.", "", line)
+        line = re.sub(r"\s*`[^`]*\.xlsx`", "", line)
         line = re.sub(r"\s*The numbers sit in the Key Indicators workbook \(v02\) in 01\.4\.", "", line)
         out.append(line)
     return "\n".join(out)
@@ -369,24 +380,112 @@ def build_charts(src):
             "type": "line", "unit": "g/kWh", "decimals": 0, "xfmt": "year", "series": [
                 {"name": "Carbon intensity", "slot": 1, "data": [[date_str(r[1]), round(r[3], 1)] for r in world]}]},
             EMBER)
+
+    # --- Global, country-level (EIA international, JODI, Ember monthly)
+    bal = W("01_Market_Foundations_and_Data/01.4_Supply_Demand_Balances/*Global_Energy_Balance_by_Country*.xlsx")
+    gprod = W("02_Upstream_Production_by_Source/*Global_Production_by_Country*.xlsx")
+    trade = W("03_Midstream_Logistics_and_Transportation/**/*Global_Energy_Trade_and_Stocks*.xlsx")
+    gpow = W("04_Downstream_Refining_and_End_Use/**/*Global_Power_Generation*.xlsx")
+    gco2 = W("06_Policy_Regulation_and_Carbon/**/*Global_CO2_by_Country*.xlsx")
+
+    def ranked(path, sheet, n=10):
+        head, body, _ = table_rows(path, sheet)
+        if not head:
+            return None, []
+        years = [h for h in head if re.fullmatch(r"\d{4}", str(h))]
+        last = years[-1]
+        li = head.index(last)
+        out = [(r[1], num(r[li])) for r in body if isinstance(r[0], (int, float)) and num(r[li]) is not None]
+        return last, out[:n], head, body, years
+
+    def bar_rank(cid, path, sheet, title, unit, source, n=10, dec=0):
+        res = ranked(path, sheet, n)
+        if not res[1]:
+            return
+        last, top = res[0], res[1]
+        C[cid] = chart(cid, title % last, {"type": "bar", "unit": unit, "decimals": dec,
+                       "categories": [t[0] for t in top], "series": [{"name": str(last), "slot": 1, "values": [t[1] for t in top]}]}, source)
+
+    EIA_INTL = "Source: EIA international energy data (annual)."
+    h, rows, _ = table_rows(bal, "World_and_Regions")
+    if rows:
+        regs = [c for c in h[3:] if c not in ("World", "OECD") and c]
+        def regrow(metric):
+            for r in rows:
+                if r[0] == metric:
+                    return r
+        prod, cons = regrow("Crude oil production"), regrow("Oil consumption")
+        tl = regrow("Total liquids production")
+        if tl and cons:
+            C["regions_oil"] = chart("regions_oil", "Oil supply vs demand by region (kb/d)", {
+                "type": "bar", "unit": "kb/d", "decimals": 0, "categories": regs,
+                "series": [{"name": "Liquids production, %s" % tl[2], "slot": 1, "values": [num(tl[h.index(c)]) for c in regs]},
+                           {"name": "Oil consumption, %s" % cons[2], "slot": 2, "values": [num(cons[h.index(c)]) for c in regs]}]},
+                EIA_INTL + " Asia & Oceania burns 37% of the world's oil but produces 9%; the Middle East is the reverse.")
+    bar_rank("oil_demand_top", bal, "Oil consumption", "Largest oil consumers, %s (kb/d)", "kb/d", EIA_INTL)
+    bar_rank("gas_exporters", trade, "Gas exports (pipeline + LNG)", "Largest gas exporters, pipeline + LNG, %s (bcm)", "bcm", EIA_INTL, dec=1)
+    bar_rank("energy_use_top", bal, "Primary energy consumption", "Largest energy consumers, %s (quadrillion Btu)", "quad Btu", EIA_INTL, dec=1)
+
+    res = ranked(gco2, "Energy CO2 emissions", 4)
+    if res[1]:
+        _, top, head, body, years = res
+        names = [t[0] for t in top]
+        ser = []
+        for i, nm in enumerate(names):
+            r = next(b for b in body if b[1] == nm)
+            ser.append({"name": nm, "slot": i + 1, "data": [[date_str(y), num(r[head.index(y)])] for y in years if num(r[head.index(y)]) is not None]})
+        C["co2_lines"] = chart("co2_lines", "Energy CO₂ emissions, four largest emitters (Mt CO₂)", {
+            "type": "line", "unit": "Mt", "decimals": 0, "xfmt": "year", "zero": True, "series": ser}, EIA_INTL)
+
+    def jodi(path, sheet, countries, title, note):
+        head, body, notes = table_rows(path, sheet)
+        if not head:
+            return None
+        months = [m for m in head if re.fullmatch(r"\d{4}-\d{2}", str(m))]
+        ser = []
+        for i, cn in enumerate(countries):
+            r = next((b for b in body if b[0] == cn), None)
+            if r:
+                ser.append({"name": cn.replace("Korea, Republic of", "South Korea"), "slot": i + 1,
+                            "data": [[m + "-01", num(r[head.index(m)])] for m in months if num(r[head.index(m)]) is not None]})
+        return {"type": "line", "unit": "kb/d", "decimals": 0, "zero": True, "series": ser}
+    JODI = 'Source: <a href="https://www.jodidata.org/" target="_blank" rel="noopener">JODI Oil World Database</a>, as reported by national administrations. Russia, Iraq, the UAE and Iran have not reported 2026 data.'
+    sp = jodi(gprod, "JODI_Crude_Production_Monthly", ["Saudi Arabia", "Kuwait", "Brazil", "Guyana"], "", "")
+    if sp:
+        C["jodi_crude"] = chart("jodi_crude", "Crude output: the Gulf vs the Americas, monthly (kb/d)", sp, JODI)
+    sp = jodi(trade, "JODI_Crude_Imports_Monthly", ["China", "Korea, Republic of", "Japan", "Germany"], "", "")
+    if sp:
+        C["jodi_imports"] = chart("jodi_imports", "Crude imports of the largest buyers, monthly (kb/d)", sp, JODI)
+
+    h, rows, _ = table_rows(gpow, "Mix_Last_12m")
+    if rows:
+        want = ["World", "EU", "China", "United States", "India", "Japan", "Brazil", "Germany", "United Kingdom", "Australia", "Middle East"]
+        ws = h.index("Wind+solar share %")
+        pick = [(r[0], num(r[ws])) for r in rows if r[0] in want and num(r[ws]) is not None]
+        pick.sort(key=lambda x: -x[1])
+        C["ws_share"] = chart("ws_share", "Wind and solar share of electricity, last 12 months (%)", {
+            "type": "bar", "unit": "%", "decimals": 1, "categories": [p[0] for p in pick],
+            "series": [{"name": "Wind + solar", "slot": 1, "values": [p[1] for p in pick]}]},
+            'Source: <a href="https://ember-energy.org/data/monthly-electricity-data/" target="_blank" rel="noopener">Ember monthly electricity data</a>, licensed CC-BY-4.0. 12 months to August 2026.')
     return C
 
 
 SECTION_CHARTS = {
-    "foundations": ["agencies", "brent_wti", "us_crude_stocks"],
-    "upstream": ["oil_producers", "gulf_crude", "breakevens", "lcoe"],
-    "midstream": ["eu_storage", "us_distillate", "us_crude_stocks"],
-    "downstream": ["crack", "utilisation", "retail", "world_mix", "us_mix"],
-    "regions": ["opec_shock", "gulf_crude", "gas_intl"],
-    "policy": ["power_co2", "world_mix"],
-    "finance": ["brent_wti", "henry_hub", "gas_intl", "cot", "retail"],
+    "foundations": ["regions_oil", "oil_demand_top", "agencies", "energy_use_top"],
+    "upstream": ["oil_producers", "jodi_crude", "breakevens", "lcoe"],
+    "midstream": ["eu_storage", "jodi_imports", "gas_exporters", "us_crude_stocks"],
+    "downstream": ["ws_share", "world_mix", "crack", "retail"],
+    "regions": ["regions_oil", "jodi_crude", "opec_shock", "gas_intl"],
+    "policy": ["co2_lines", "power_co2", "ws_share", "world_mix"],
+    "finance": ["brent_wti", "gas_intl", "henry_hub", "cot", "retail"],
 }
-HOME_CHARTS = ["brent_wti", "eu_storage", "crack", "world_mix"]
+HOME_CHARTS = ["brent_wti", "eu_storage", "jodi_crude", "ws_share"]
 DATA_GROUPS = [
-    ("Prices and positioning", ["brent_wti", "henry_hub", "gas_intl", "retail", "cot"]),
-    ("Supply", ["agencies", "opec_shock", "gulf_crude", "oil_producers", "breakevens"]),
-    ("Storage and logistics", ["eu_storage", "us_crude_stocks", "us_distillate"]),
-    ("Refining and power", ["crack", "utilisation", "us_mix", "world_mix", "lcoe", "power_co2"]),
+    ("Global picture", ["regions_oil", "oil_demand_top", "energy_use_top", "gas_exporters", "co2_lines", "ws_share"]),
+    ("Prices and positioning", ["brent_wti", "gas_intl", "henry_hub", "retail", "cot"]),
+    ("Supply", ["jodi_crude", "opec_shock", "gulf_crude", "oil_producers", "agencies", "breakevens"]),
+    ("Trade, storage and logistics", ["jodi_imports", "eu_storage", "us_crude_stocks", "us_distillate"]),
+    ("Refining and power", ["crack", "utilisation", "world_mix", "us_mix", "lcoe", "power_co2"]),
 ]
 
 
@@ -466,7 +565,7 @@ def page(slug, title, body, description="", hero=""):
 </main>
 <footer>
   <div class="wrap foot">
-    <div><strong>Global Energy Analysis</strong><p>Independent research on global energy markets. Figures are as published by the cited sources; lines marked <em>inferred</em> and the calls on the overview are analytical judgement, not published data. Not investment advice.</p></div>
+    <div><strong>Global Energy Analysis</strong> · by Kolan Sai Kiran Reddy<p>Independent research on global energy markets. Figures are as published by the cited sources; lines marked <em>inferred</em> and the calls on the overview are analytical judgement, not published data. Not investment advice.</p></div>
     <div class="footlinks"><a href="research.html">Research</a><a href="data.html">Data</a><a href="companies.html">Companies</a><a href="about.html#sources">Sources and licences</a></div>
   </div>
 </footer>
@@ -494,14 +593,21 @@ def stat_tiles(src):
     storage = W("03_Midstream_Logistics_and_Transportation/**/*US_Storage_and_Trade*.xlsx")
     refining = W("04_Downstream_Refining_and_End_Use/**/*Refining_Margins*.xlsx")
     from_latest(prices, "Brent spot", "Brent spot", "/bbl", dec=2, pre="$")
-    from_latest(prices, "Henry Hub spot", "Henry Hub gas", "/MMBtu", dec=2, pre="$")
+    from_latest(prices, "Europe natural gas (TTF-linked, IMF)", "European gas (TTF-linked)", "/MMBtu", dec=2, pre="$")
+    from_latest(prices, "Japan LNG import price (IMF)", "Japan LNG import price", "/MMBtu", dec=2, pre="$")
     from_latest(storage, "EU gas storage, % full", "EU gas storage", "% full", dec=1)
-    from_latest(prices, "US retail diesel", "US retail diesel", "/gal", dec=2, pre="$")
-    from_latest(storage, "US distillate stocks", "US distillate stocks", "mb", scale=0.001, dec=1)
-    h, rows, _ = table_rows(refining, "Refining_Weekly")
-    if rows:
-        i = h.index("US refinery utilisation (%)")
-        tiles.append(("%.1f" % num(rows[0][i]), "%", "US refinery utilisation", fmt_date(rows[0][0]), None))
+    gprod = W("02_Upstream_Production_by_Source/*Global_Production_by_Country*.xlsx")
+    h, rows, _ = table_rows(gprod, "JODI_Crude_Production_Monthly")
+    for r in rows:
+        if r[0] == "Saudi Arabia" and "Latest" in h:
+            v, m, yy = num(r[h.index("Latest")]), r[h.index("Latest month")], num(r[h.index("y/y % (same month)")])
+            tiles.append(("{:,.0f}".format(v), "kb/d", "Saudi crude output", "%s · %+.0f%% y/y" % (fmt_date(m)[2:] if fmt_date(m)[0].isdigit() else m, yy), yy))
+    gpow = W("04_Downstream_Refining_and_End_Use/**/*Global_Power_Generation*.xlsx")
+    h, rows, _ = table_rows(gpow, "Mix_Last_12m")
+    for r in rows:
+        if r[0] == "World":
+            ch = num(r[h.index("Wind+solar share change (pts)")])
+            tiles.append(("%.1f" % num(r[h.index("Wind+solar share %")]), "%", "World wind + solar share", "12 months to Aug 2026" + (" · %+.1f pts" % ch if ch is not None else ""), None))
     return "".join('<div class="stat"><div class="cap">{l}</div><div class="num">{v}<span>{u}</span></div><div class="sub">{s}</div></div>'.format(
         l=esc(l), v=esc(v), u=esc(u), s=esc(s)) for v, u, l, s, _ in tiles)
 
@@ -571,7 +677,7 @@ def build_home(src, charts, meta, calls, watch):
             n=i + 1, t=esc(t), b=md_to_html(b), l=esc(l)) for i, (t, l, b) in enumerate(calls))
     featured = "".join(render_chart(charts[c]) for c in HOME_CHARTS if c in charts)
     hero = """<section class="hero"><div class="wrap">
-  <p class="eyebrow">{ed} · The view</p>
+  <p class="eyebrow">{ed} · The view · Kolan Sai Kiran Reddy</p>
   <h1>{h}</h1>
   <p class="lede">{lede}</p>
   <p class="cta"><a href="#calls">Read the five calls →</a><a href="data.html">Explore the data →</a></p>
@@ -724,7 +830,7 @@ def build_review(src):
 def build_about():
     body = """<header class="pagehead"><p class="eyebrow">About</p><h1>About this research</h1></header>
 <article class="prose">
-<p><strong>[Your name]</strong> · <em>[One line about you, for example: energy market analyst focused on oil, gas and power.]</em></p>
+<p><strong>Kolan Sai Kiran Reddy</strong></p>
 <p>This site is my monthly view of global energy markets, with the research and data behind it. The briefs follow the value chain: market foundations, upstream production, midstream logistics, downstream refining and power, regional markets and geopolitics, policy and carbon, and prices and positioning.</p>
 <p><em>[Add your email or LinkedIn here.]</em></p>
 <h2>Method</h2>

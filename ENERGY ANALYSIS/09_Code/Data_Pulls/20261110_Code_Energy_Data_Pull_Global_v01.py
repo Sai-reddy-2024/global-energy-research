@@ -152,6 +152,44 @@ def ember_pull(raw_dir, date):
     with urllib.request.urlopen(req, timeout=120) as r, open(os.path.join(raw_dir, f"{date}_Ember_Electricity_Generation_Global_Annual.csv"), "wb") as f:
         f.write(r.read())
 
+# Global, every country: EIA international annual. (productId, unit) -> all activities, all countries/regions
+EIA_INTL_BULK = [(57, "TBPD"), (53, "TBPD"), (5, "TBPD"), (26, "BCM"), (7, "MT"), (2, "BKWH"), (2, "MK"), (44, "QBTU"), (4008, "MMTCD")]
+
+def eia_intl_bulk(raw_dir, date, start="2010"):
+    n = 0
+    with open(os.path.join(raw_dir, f"{date}_EIA_API_International_Annual_Global.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["productId", "product", "activityId", "activity", "unit", "countryRegionId", "countryRegion", "type", "year", "value"])
+        for pid, unit in EIA_INTL_BULK:
+            off = 0
+            while True:
+                q = f"api_key={EIA}&frequency=annual&data[]=value&facets[productId][]={pid}&facets[unit][]={unit}&start={start}&length=5000&offset={off}"
+                r = get("https://api.eia.gov/v2/international/data/?" + q.replace("[", "%5B").replace("]", "%5D"))["response"]
+                rows = r.get("data") or []
+                for x in rows:
+                    try: v = float(x["value"])
+                    except (TypeError, ValueError): continue
+                    w.writerow([pid, x["productName"], x["activityId"], x["activityName"], unit, x["countryRegionId"], x["countryRegionName"], x["countryRegionTypeName"], x["period"], v]); n += 1
+                off += len(rows)
+                if not rows or off >= int(r.get("total") or 0): break
+    return n
+
+JODI = {"oil_primary": "https://www.jodidata.org/_resources/files/downloads/oil-data/annual-csv/primary/{f}.csv",
+        "oil_secondary": "https://www.jodidata.org/_resources/files/downloads/oil-data/annual-csv/secondary/{f}.csv"}
+
+def jodi_pull(raw_dir, date, years=(2025, 2026)):
+    for kind, url in JODI.items():
+        for y in years:
+            fname = f"{kind.split('_')[1]}year{y}" if y == dt.date.today().year else str(y)
+            req = urllib.request.Request(url.format(f=fname), headers={"User-Agent": "energy-research-script"})
+            with urllib.request.urlopen(req, timeout=300) as r, open(os.path.join(raw_dir, f"{date}_JODI_{kind.title().replace('_', '_')}_{y}_Global_Monthly.csv"), "wb") as f:
+                f.write(r.read())
+
+def ember_monthly_pull(raw_dir, date):
+    url = "https://files.ember-energy.org/public-downloads/generation/outputs/release_generation_monthly_global.csv"
+    req = urllib.request.Request(url, headers={"User-Agent": "energy-research-script"})
+    with urllib.request.urlopen(req, timeout=300) as r, open(os.path.join(raw_dir, f"{date}_Ember_Electricity_Generation_Global_Monthly.csv"), "wb") as f:
+        f.write(r.read())
+
 def main(root, date):
     raw_eia = os.path.join(root, "01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/EIA", f"API_{date}")
     raw_oth = os.path.join(root, "01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/Other_Sources", f"API_{date}")
@@ -192,6 +230,9 @@ def main(root, date):
     if OPA:
         try: opa_pull(raw_oth, date)
         except Exception as e: fails.append(("OPA", "OilPriceAPI", str(e)[:120]))
+    for fn, d, label in ((eia_intl_bulk, raw_eia, "EIA international bulk"), (jodi_pull, raw_oth, "JODI"), (ember_monthly_pull, raw_oth, "Ember monthly")):
+        try: fn(d, date)
+        except Exception as e: fails.append((label, label, str(e)[:120]))
     try: ember_pull(raw_oth, date)
     except Exception as e: fails.append(("EMBER", "Ember yearly generation", str(e)[:120]))
     json.dump({"meta": meta, "fails": fails, "cot": {k: v[0] for k, v in cots.items()}}, open(os.path.join(raw_oth, f"{date}_pull_manifest.json"), "w"), indent=1)
