@@ -1,7 +1,7 @@
 name: Deploy website to GitHub Pages
+# Manual only: the site is not public yet. Run it from the Actions tab when you are ready to publish
+# (GitHub Pages must also be enabled with Source = GitHub Actions). Restore the push trigger to deploy on every push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
