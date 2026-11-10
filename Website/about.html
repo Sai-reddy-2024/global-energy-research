@@ -3,46 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>About · Global Energy Analysis</title>
-<meta name="description" content="About this energy research.">
+<title>About and sources · Global Energy Analysis</title>
+<meta name="description" content="About this energy research, its method and data sources.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="index.html"><span class="mark" aria-hidden="true"></span>Global Energy Analysis</a>
-  <button class="menu" aria-expanded="false" aria-controls="nav">Menu</button>
+  <div class="wrap bar">
+    <a class="brand" href="index.html"><span class="mark" aria-hidden="true"></span>Global Energy Analysis</a>
+    <nav id="nav" class="topnav"><a href="index.html">Overview</a><div class="drop"><button type="button" class="droptoggle" aria-expanded="false">Research <span aria-hidden="true">▾</span></button><div class="dropmenu"><a href="foundations.html"><span>01</span>Market Foundations</a><a href="upstream.html"><span>02</span>Upstream Production</a><a href="midstream.html"><span>03</span>Midstream Logistics</a><a href="downstream.html"><span>04</span>Downstream and Power</a><a href="regions.html"><span>05</span>Regions and Geopolitics</a><a href="policy.html"><span>06</span>Policy and Carbon</a><a href="finance.html"><span>07</span>Prices and Positioning</a><a href="review.html"><span>Arc</span>October market review</a></div></div><a href="data.html">Data</a><a href="companies.html">Companies</a><a href="about.html" aria-current="page">About</a></nav>
+    <div class="tools">
+      <button class="theme" type="button" aria-label="Switch light or dark theme">◐</button>
+      <button class="menu" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    </div>
+  </div>
 </header>
-<div class="layout">
-<nav id="nav" class="sidenav">
-<a href="index.html">Home</a>
-<a href="review.html">Market Review</a>
-<a href="indicators.html">Key Indicators</a>
-<a href="foundations.html">Market Foundations</a>
-<a href="upstream.html">Upstream Production</a>
-<a href="midstream.html">Midstream Logistics</a>
-<a href="downstream.html">Downstream and End Use</a>
-<a href="regions.html">Regions and Geopolitics</a>
-<a href="policy.html">Policy and Carbon</a>
-<a href="finance.html">Finance and Trading</a>
-<a href="about.html" aria-current="page">About</a>
-</nav>
-<main>
-<p class="eyebrow">About</p><h1>About this research</h1>
+
+<main class="wrap">
+<header class="pagehead"><p class="eyebrow">About</p><h1>About this research</h1></header>
 <article class="prose">
-<p><strong>[Your name]</strong> · <em>[One line about you, e.g. energy market analyst focused on oil, gas and power.]</em></p>
-<p>This site publishes my monthly analysis of global energy markets. It follows the value chain: market foundations and data, upstream production, midstream logistics, downstream refining and end use, regional markets and geopolitics, policy and carbon, and financial analysis and trading.</p>
+<p><strong>[Your name]</strong> · <em>[One line about you, for example: energy market analyst focused on oil, gas and power.]</em></p>
+<p>This site is my monthly view of global energy markets, with the research and data behind it. The briefs follow the value chain: market foundations, upstream production, midstream logistics, downstream refining and power, regional markets and geopolitics, policy and carbon, and prices and positioning.</p>
+<p><em>[Add your email or LinkedIn here.]</em></p>
 <h2>Method</h2>
 <ul>
-<li>Figures come from public releases (IEA, EIA, OPEC, IMF, OIES, Ember and others) and press coverage of them. Each brief lists its sources.</li>
-<li>Lines marked <em>inferred</em> are my own analytical judgement, not published data.</li>
-<li>Prices are indicative snapshots. Check them against exchange data before relying on them.</li>
+<li>Figures come from public releases and data services, listed below and cited in each brief.</li>
+<li>Lines marked <em>inferred</em>, and the five calls on the overview, are my own analytical judgement, not published data.</li>
+<li>Prices are snapshots. Check them against exchange data before relying on them. Nothing here is investment advice.</li>
 </ul>
-<h2>Contact</h2>
-<p><em>[Add your email or LinkedIn here.]</em></p>
+<h2 id="sources">Data sources and licences</h2>
+<ul>
+<li><strong>US Energy Information Administration (EIA):</strong> weekly petroleum and gas storage data, spot prices, Electric Power Monthly, international production and the Short-Term Energy Outlook. EIA data are public domain.</li>
+<li><strong>FRED, Federal Reserve Bank of St. Louis:</strong> retail fuel prices, IMF primary commodity prices and US macro series.</li>
+<li><strong>CFTC:</strong> Disaggregated Commitments of Traders reports.</li>
+<li><strong>GIE AGSI+ (Gas Infrastructure Europe):</strong> EU gas storage. Data from <a href="https://agsi.gie.eu/" target="_blank" rel="noopener">agsi.gie.eu</a>.</li>
+<li><strong>Ember:</strong> electricity generation and power-sector emissions from <a href="https://ember-energy.org/data/yearly-electricity-data/" target="_blank" rel="noopener">Ember Yearly Electricity Data</a>, used under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0 licence</a>.</li>
+<li><strong>Energy Institute:</strong> Statistical Review of World Energy 2026 (2025 country data).</li>
+<li><strong>Federal Reserve Bank of Dallas:</strong> Dallas Fed Energy Survey (shale breakevens).</li>
+<li><strong>Lazard:</strong> LCOE+ 2026.</li>
+<li><strong>Agency reports:</strong> IEA Oil Market Report, OPEC Monthly Oil Market Report, IMF World Economic Outlook, OIES Quarterly Gas Review, USGS Mineral Commodity Summaries.</li>
+<li><strong>Company data:</strong> annual reports, results releases and filings, with market values from companiesmarketcap.com. Every row in the company tables names its source.</li>
+</ul>
 </article>
-<footer>Independent research. Figures are as published by the cited sources; lines marked <em>inferred</em> are analytical judgement, not published data. Not investment advice.</footer>
 </main>
-</div>
+<footer>
+  <div class="wrap foot">
+    <div><strong>Global Energy Analysis</strong><p>Independent research on global energy markets. Figures are as published by the cited sources; lines marked <em>inferred</em> and the calls on the overview are analytical judgement, not published data. Not investment advice.</p></div>
+    <div class="footlinks"><a href="research.html">Research</a><a href="data.html">Data</a><a href="companies.html">Companies</a><a href="about.html#sources">Sources and licences</a></div>
+  </div>
+</footer>
 <script src="assets/site.js"></script>
 </body>
 </html>
