@@ -6,3 +6,6 @@ __pycache__/
 ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**
 !ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**/
 !ENERGY ANALYSIS/01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/**/_README.md
+# Licensed data that cannot be republished (OilPriceAPI terms)
+*OilPriceAPI*
+ENERGY ANALYSIS/07_Financial_Analysis_and_Trading/07.1_Commodity_Pricing/*Energy_Prices_and_Positioning*.xlsx
