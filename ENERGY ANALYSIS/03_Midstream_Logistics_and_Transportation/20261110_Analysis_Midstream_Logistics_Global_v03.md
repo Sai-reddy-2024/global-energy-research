@@ -103,6 +103,25 @@ What this means:
 - **China cut crude imports by 23% in August** and drew on its own stocks rather than bid for scarce cargoes (*inferred*). Japan's imports rose 19% while its crude stocks are still 16.5% lower than a year ago, which suggests restocking (*inferred*).
 - **Coal trade is an Asian market:** Indonesia and Australia ship 60% of world exports; China (+35% in 2024), India and Japan buy most of it. Coal-for-LNG switching in Asia shows up here first.
 
+### Europe's gas supply by route (ENTSOG and GIE ALSI)
+New workbook: `03.3_Storage_and_Terminals/20261110_Analysis_Europe_Gas_Supply_and_LNG_Europe_Daily_v01.xlsx`. It has EU gas imports by entry route, monthly since Jan-24 and daily for the last 60 days (ENTSOG physical flows at every EU import and LNG entry point), plus LNG tank stocks and send-out by country (GIE ALSI, since 2021).
+
+| Route into the EU | Last 30 days to 9 Nov (mcm/d) | Same period 2025 | Change |
+|---|---|---|---|
+| LNG, all terminals | 352 | 405 | −13% |
+| Norway (pipeline) | 220 | 227 | −3% |
+| North Africa (Algeria, Libya) | 83 | 92 | −10% |
+| Russia via TurkStream | 59 | 58 | +2% |
+| Azerbaijan and Turkey (TAP) | 36 | 35 | +4% |
+| Ukraine border | 14 | 0 | n/a |
+| **Total** | **763** | **817** | **−7%** |
+
+- **LNG is where Europe lost supply.** LNG send-out is 13% lower than a year ago, and it is 45% of EU imports (it was over 50% in late 2025). *Inferred:* this is mostly the Qatari volume held up by Hormuz.
+- **LNG tanks:** EU terminals hold 31.3 TWh of LNG, 49.5% of declared capacity (ALSI, 9 Nov). Belgium (−59% send-out y/y), Germany (−36%), Lithuania (−37%) and Italy (−30%) are drawing least; Spain, the Netherlands, Portugal and Croatia are sending out more than last year.
+- Russia still supplies about 7% of EU imports through TurkStream alone. Ukraine transit stopped on 1 Jan 2025; the small 2026 flows at the Ukraine border are not Russian transit (*inferred*: likely gas returning from Ukrainian storage).
+- Monthly EU imports were 23.4 bcm in October, against 25.0 bcm in October 2025.
+- Method notes are in the workbook: German points reported by several TSOs are counted once, and re-entries from Serbia, Switzerland and Moldova are left out.
+
 ## 03.1 Maritime shipping and chokepoints
 - **Hormuz:** a tanker was hit by a mine on 6 Nov, and US–Iran–mediator talks open in Abu Dhabi on 10–11 Nov. Brent futures fell about 16% in the week to 9 Nov on hopes of an interim deal (TradingNEWS).
 - An agreed shipping lane near Oman for Iraqi exports is reported to be part of the US understanding with Iraq (TradingNEWS).
@@ -139,3 +158,4 @@ What this means:
 - [Morgan Downey commodity news, 10 Nov 2026](https://commoditynews.morgandowney.com/news/2026-11-10) · [IntelliNews on EU withdrawals](https://www.intellinews.com/europe-s-gas-withdrawals-hit-date-records-as-gazprom-s-deliveries-to-turkey-nearly-quadruple-482841/) · [BNP Paribas, 9 Nov 2026](https://economic-research.bnpparibas.com/html/en-US/2026-exposed-risks-European-market-11/9/2026,53921)
 - [TradingNEWS, 9 Nov 2026](https://www.tradingnews.com/news/brent-93-usd-extends-16-perent-weekly-collapse-as-iran-deal-heads-to-trump)
 - EIA international data (API v2, annual, all countries and regions), JODI Oil World Database (monthly, free with attribution) and Ember monthly electricity data (CC-BY-4.0), pulled 10 Nov 2026. Raw files are in 01.1.
+- New free sources pulled 10 Nov 2026: ENTSOG Transparency Platform (EU gas flows), GIE ALSI (LNG terminals), World Bank Pink Sheet (CC-BY-4.0, updated 3 Nov 2026) and IMF (WEO macro via DataMapper; primary commodity prices via the IMF data API). ICE Futures Europe Commitments of Traders could not be pulled: ice.com blocks scripted downloads.
