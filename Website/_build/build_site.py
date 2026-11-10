@@ -179,7 +179,9 @@ def split_title(md):
 
 
 def brief_versions(src, folder):
-    return files(src, os.path.join(folder, "*_Analysis_*_Global_v*.md"))
+    """All editions of a section brief, oldest first: the current one in the section folder, earlier ones in 99_Archive/<section>."""
+    paths = files(src, os.path.join(folder, "*_Analysis_*_Global_v*.md")) + files(src, os.path.join("99_Archive", folder, "*_Analysis_*_Global_v*.md"))
+    return sorted(paths, key=os.path.basename)
 
 
 # ---------------------------------------------------------------- chart specs

@@ -190,6 +190,91 @@ def ember_monthly_pull(raw_dir, date):
     with urllib.request.urlopen(req, timeout=300) as r, open(os.path.join(raw_dir, f"{date}_Ember_Electricity_Generation_Global_Monthly.csv"), "wb") as f:
         f.write(r.read())
 
+# ---- Added 10 Nov 2026: ENTSOG, GIE ALSI, World Bank Pink Sheet, IMF ----
+ENTSOG = "https://transparency.entsog.eu/api/v1/operationaldata"
+
+def entsog_pull(raw_dir, date, start="2024-01-01", probe_day=None):
+    """Daily physical flows at every EU import point (pipeline from non-EU) and every EU LNG entry point. No key."""
+    import urllib.parse
+    end = dt.date.today() - dt.timedelta(days=1)
+    probe = probe_day or (end - dt.timedelta(days=7)).isoformat()
+    day = get(ENTSOG + "?" + urllib.parse.urlencode({"from": probe, "to": probe, "indicator": "Physical Flow", "periodType": "day", "limit": -1}))["operationaldata"]
+    sel = {}
+    for r in day:
+        pt = r.get("pointType") or ""
+        if r["directionKey"] != "entry" or r["operatorKey"][:2] in ("UA", "UK"): continue
+        if pt.startswith("Cross-Border Transmission IP between EU and Non-EU") or pt == "LNG Entry point":
+            sel[r["operatorKey"] + r["pointKey"] + "entry"] = pt
+    keys = list(sel); n = 0
+    halves = []; a = dt.date.fromisoformat(start)
+    while a <= end:
+        b = min(dt.date(a.year, 6, 30) if a.month <= 6 else dt.date(a.year, 12, 31), end); halves.append((a, b)); a = b + dt.timedelta(days=1)
+    with open(os.path.join(raw_dir, f"{date}_ENTSOG_Physical_Flows_EU_Import_Points_Europe_Daily.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["gas_day", "operator_key", "operator", "point_key", "point", "direction", "point_type", "unit", "value", "flow_status"])
+        for a, b in halves:
+            for i in range(0, len(keys), 40):
+                q = urllib.parse.urlencode({"pointDirection": ",".join(keys[i:i + 40]), "from": a.isoformat(), "to": b.isoformat(), "indicator": "Physical Flow", "periodType": "day", "timezone": "CET", "limit": -1})
+                for r in get(ENTSOG + "?" + q).get("operationaldata", []):
+                    w.writerow([r["periodFrom"][:10], r["operatorKey"], r["operatorLabel"], r["pointKey"], r["pointLabel"], r["directionKey"], r.get("pointType") or sel.get(r["operatorKey"] + r["pointKey"] + "entry"), r["unit"], r["value"], r.get("flowStatus")]); n += 1
+    return n
+
+ALSI_AREAS = ["eu", "be", "de", "es", "fr", "gr", "hr", "it", "lt", "nl", "pl", "pt", "fi", "gb"]
+def alsi_pull(raw_dir, date, start="2021-01-01"):
+    """LNG terminal inventory and send-out from GIE ALSI (same key as AGSI+)."""
+    end = dt.date.today().isoformat(); n = 0
+    with open(os.path.join(raw_dir, f"{date}_GIE_ALSI_LNG_Terminals_Europe_Daily.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["gas_day", "area", "name", "inventory_lng_1000m3", "inventory_gwh", "send_out_gwh_d", "dtmi_lng_1000m3", "dtmi_gwh", "dtrs_gwh_d", "status"])
+        for c in ALSI_AREAS:
+            page, last = 1, 1
+            while page <= last:
+                q = ("type=eu" if c == "eu" else f"country={c}") + f"&from={start}&to={end}&size=300&page={page}"
+                r = get(f"https://alsi.gie.eu/api?{q}", headers={"x-key": GIE, "User-Agent": "energy-research-script"})
+                last = int(r.get("last_page") or 1)
+                for x in r.get("data", []):
+                    inv, dt_ = x.get("inventory") or {}, x.get("dtmi") or {}
+                    w.writerow([x.get("gasDayStart"), c.upper(), x.get("name"), inv.get("lng"), inv.get("gwh"), x.get("sendOut"), dt_.get("lng"), dt_.get("gwh"), x.get("dtrs"), x.get("status")]); n += 1
+                page += 1
+    return n
+
+PINK_PAGE = "https://www.worldbank.org/en/research/commodity-markets"
+def pink_pull(raw_dir, date):
+    """World Bank Pink Sheet monthly prices workbook (CC-BY-4.0). Finds the current link on the commodity markets page."""
+    import re
+    req = urllib.request.Request(PINK_PAGE, headers={"User-Agent": "energy-research-script"})
+    html = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "ignore")
+    url = re.findall(r'https://thedocs\.worldbank\.org[^"]*CMO-Historical-Data-Monthly\.xlsx', html)[0]
+    req = urllib.request.Request(url, headers={"User-Agent": "energy-research-script"})
+    out = os.path.join(raw_dir, f"{date}_WorldBank_Pink_Sheet_Commodity_Prices_Global_Monthly.xlsx")
+    open(out, "wb").write(urllib.request.urlopen(req, timeout=120).read())
+    return url
+
+IMF_DM = ["NGDP_RPCH", "PCPIPCH", "NGDPD", "LP"]   # real GDP growth %, CPI inflation %, GDP US$bn, population m (WEO)
+IMF_PCPS = ["POILBRE", "POILWTI", "POILDUB", "PNGASEU", "PNGASUS", "PNGASJP", "PCOALAU", "PCOALSA", "PURAN", "PNRG", "PCOPP", "PNICK", "PALUM"]
+def imf_pull(raw_dir, date):
+    """IMF WEO country macro (DataMapper API) and IMF primary commodity prices (PCPS, SDMX 3.0). No key."""
+    n = 0
+    with open(os.path.join(raw_dir, f"{date}_IMF_WEO_Macro_by_Country_Global_Annual.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["indicator", "iso3", "year", "value"])
+        for ind in IMF_DM:
+            # The DataMapper API refuses urllib's request profile, so use the system curl (a standard API client).
+            import subprocess
+            vals = json.loads(subprocess.run(["curl", "-s", "-m", "60", f"https://www.imf.org/external/datamapper/api/v1/{ind}"], capture_output=True, check=True).stdout)["values"][ind]
+            for iso, ys in vals.items():
+                for y, v in ys.items(): w.writerow([ind, iso, y, v]); n += 1
+    u = ("https://api.imf.org/external/sdmx/3.0/data/dataflow/IMF.RES/PCPS/+/G001." + "+".join(IMF_PCPS) +
+         ".USD.M?dimensionAtObservation=TIME_PERIOD&attributes=dsd&measures=all")
+    d = get(u, headers={"Accept": "application/json", "User-Agent": "energy-research-script"})["data"]
+    dims = d["structures"][0]["dimensions"]; tv = [x["value"] for x in dims["observation"][0]["values"]]
+    ind_ix = [x["id"] for x in dims["series"]].index("INDICATOR"); inds = [x["id"] for x in dims["series"][ind_ix]["values"]]
+    with open(os.path.join(raw_dir, f"{date}_IMF_PCPS_Commodity_Prices_Global_Monthly.csv"), "w", newline="") as f:
+        w = csv.writer(f); w.writerow(["indicator", "period", "value_usd"])
+        for k, s in d["dataSets"][0]["series"].items():
+            ind = inds[int(k.split(":")[ind_ix])]
+            for t, o in sorted(s["observations"].items(), key=lambda x: int(x[0])):
+                if o[0] not in (None, ""): w.writerow([ind, tv[int(t)], o[0]]); n += 1
+    return n
+# ICE Futures Europe COT (Brent, gasoil, TTF) sits behind bot protection for scripts, so it is not pulled. CFTC covers NYMEX contracts.
+
 def main(root, date):
     raw_eia = os.path.join(root, "01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/EIA", f"API_{date}")
     raw_oth = os.path.join(root, "01_Market_Foundations_and_Data/01.1_Raw_Data_Downloads/Other_Sources", f"API_{date}")
@@ -230,7 +315,7 @@ def main(root, date):
     if OPA:
         try: opa_pull(raw_oth, date)
         except Exception as e: fails.append(("OPA", "OilPriceAPI", str(e)[:120]))
-    for fn, d, label in ((eia_intl_bulk, raw_eia, "EIA international bulk"), (jodi_pull, raw_oth, "JODI"), (ember_monthly_pull, raw_oth, "Ember monthly")):
+    for fn, d, label in ((eia_intl_bulk, raw_eia, "EIA international bulk"), (jodi_pull, raw_oth, "JODI"), (ember_monthly_pull, raw_oth, "Ember monthly"), (entsog_pull, raw_oth, "ENTSOG EU import flows"), (pink_pull, raw_oth, "World Bank Pink Sheet"), (imf_pull, raw_oth, "IMF WEO and PCPS")) + (((alsi_pull, raw_oth, "GIE ALSI LNG terminals"),) if GIE else ()):
         try: fn(d, date)
         except Exception as e: fails.append((label, label, str(e)[:120]))
     try: ember_pull(raw_oth, date)
