@@ -1,5 +1,5 @@
 name: Weekly European gas data and note
-# Pulls GIE AGSI+ (EU storage), GIE ALSI (LNG terminals) and ENTSOG (import flows), rebuilds the EU gas storage
+# Pulls GIE AGSI+ (EU storage), GIE ALSI (LNG terminals), ENTSOG (import flows) and Open-Meteo temperatures, rebuilds the EU gas storage
 # model and the global LNG balance, drafts the weekly gas note and commits the outputs. Raw downloads stay out of the repo.
 # Needs one repository secret: GIE_API_KEY (Settings > Secrets and variables > Actions). All sources are free.
 on:

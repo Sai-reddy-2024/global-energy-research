@@ -236,6 +236,41 @@ def alsi_pull(raw_dir, date, start="2021-01-01"):
                 page += 1
     return n
 
+# Gas-heating weather points for the EU: one city per country, weighted by approximate share of EU household and
+# services gas use (assumption, editable in the storage model's Inputs sheet). Open-Meteo archive (ERA5), CC-BY 4.0, no key.
+WX_POINTS = [("DE", "Kassel", 51.31, 9.48, 27), ("IT", "Milan", 45.46, 9.19, 19), ("FR", "Paris", 48.86, 2.35, 12), ("NL", "Utrecht", 52.09, 5.12, 8),
+             ("PL", "Warsaw", 52.23, 21.01, 6), ("BE", "Brussels", 50.85, 4.35, 5), ("ES", "Madrid", 40.42, -3.70, 4), ("RO", "Bucharest", 44.43, 26.10, 4),
+             ("HU", "Budapest", 47.50, 19.04, 4), ("AT", "Vienna", 48.21, 16.37, 3), ("CZ", "Prague", 50.08, 14.44, 3), ("SK", "Bratislava", 48.15, 17.11, 2)]
+WX_START = "1995-07-01"
+
+def openmeteo_pull(raw_dir, date, hist_csv):
+    """Daily mean 2 m temperature (deg C) at the WX_POINTS from the Open-Meteo archive API.
+    Keeps a rolling history file (hist_csv, one column per country). Only the last 60 days before its end are pulled again,
+    because recent ERA5 days are revised; with no history file the whole record from WX_START is pulled.
+    The pulled slice is also written to raw_dir unchanged."""
+    hist = {}
+    if os.path.exists(hist_csv):
+        for r in csv.DictReader(open(hist_csv)): hist[r["date"]] = r
+    start = WX_START if not hist else (dt.date.fromisoformat(max(hist)) - dt.timedelta(days=60)).isoformat()
+    end = (dt.date.today() - dt.timedelta(days=1)).isoformat()
+    q = urllib.parse.urlencode(dict(latitude=",".join(str(p[2]) for p in WX_POINTS), longitude=",".join(str(p[3]) for p in WX_POINTS),
+                                    start_date=start, end_date=end, daily="temperature_2m_mean", timezone="Europe/Berlin"))
+    r = get("https://archive-api.open-meteo.com/v1/archive?" + q)
+    r = r if isinstance(r, list) else [r]
+    cols = [p[0] for p in WX_POINTS]
+    new = {}
+    for j, x in enumerate(r):
+        for t, v in zip(x["daily"]["time"], x["daily"]["temperature_2m_mean"]):
+            new.setdefault(t, {"date": t})[cols[j]] = "" if v is None else v
+    with open(os.path.join(raw_dir, f"{date}_OpenMeteo_Temperature_EU_Gas_Points_Europe_Daily.csv"), "w", newline="") as f:
+        w = csv.DictWriter(f, ["date"] + cols); w.writeheader(); [w.writerow(new[t]) for t in sorted(new)]
+    for t, row in new.items():
+        if all(row.get(c, "") != "" for c in cols): hist[t] = row     # keep the old value until all points have the day
+    os.makedirs(os.path.dirname(hist_csv), exist_ok=True)
+    with open(hist_csv, "w", newline="") as f:
+        w = csv.DictWriter(f, ["date"] + cols, extrasaction="ignore"); w.writeheader(); [w.writerow(hist[t]) for t in sorted(hist)]
+    return len(new)
+
 PINK_PAGE = "https://www.worldbank.org/en/research/commodity-markets"
 def pink_pull(raw_dir, date):
     """World Bank Pink Sheet monthly prices workbook (CC-BY-4.0). Finds the current link on the commodity markets page."""
