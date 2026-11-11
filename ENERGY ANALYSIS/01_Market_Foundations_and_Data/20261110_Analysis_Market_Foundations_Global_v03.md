@@ -37,6 +37,10 @@ What the table says:
 
 **2026 so far, monthly (JODI Oil World Database, to Aug-26):** the war shows up clearly. Saudi crude output was 6.24 mb/d in August (−36% y/y) and exports 4.45 mb/d (−31%). Kuwait output was −20%. China's crude imports fell 23% and its oil demand 20%, while Japan's crude stocks are 16.5% lower and US crude stocks (including SPR) 17% lower. Russia, Iraq, the UAE, Iran and Qatar have not reported to JODI for 2026, so use OPEC secondary sources (in 02) for them.
 
+**World economy (IMF WEO, latest vintage):** the IMF has world growth slowing to 3.1% in 2026 from 3.5%, with inflation back up to 4.7%. The war shows up in the Gulf: 2026 GDP is projected at −16% for Iraq and Kuwait, −15.6% for Qatar, −7.6% for Iran, −3.9% for the UAE and −3.3% for Saudi Arabia, with a rebound in 2027. China (4.5%), India (7.0%) and the US (2.3%) are barely affected. Detail is in `01.3_Macro_Economic_Indicators/20261110_Analysis_Global_Macro_IMF_WEO_Global_Annual_v01.xlsx` (GDP growth, inflation, GDP and population for six regions and 30 economies).
+
+**World prices, October 2026 average (World Bank Pink Sheet):** Brent $125.0/bbl (+93% y/y), Dubai $102.7, WTI $97.7; European gas $28.5/MMBtu (+162%), Japan LNG (contract) $16.6, US gas $2.96 (−7.5%); Australian coal $152/t (+42%). The spread between Brent and WTI ($27) and between European and US gas ($25.5) shows how regional the shock is.
+
 **Data lags to keep in mind:** EIA annual country data run to 2025 for oil and 2024 for everything else. JODI monthly oil data lag about two to three months. Ember monthly power data are complete for most countries to Aug-26.
 
 ## Big picture
@@ -123,3 +127,4 @@ Renewables were the largest source of supply growth for the first time outside a
 - [Saxo market note, 10 Nov 2026](https://www.home.saxo/en-gb/content/articles/macro/market-quick-take---wall-street-rebounds-and-brent-slides-below-usd-92---10-november-2026-10112026) · [Oil Authority on EIA weekly data](https://oilauthority.com/news/brent-94-29-wti-88-54-midterm-result-iran-peace-hopes)
 - [TotalEnergies Energy Outlook coverage](https://forbesmiddleeast.com/industry/energy/totalenergies-says-hormuz-crisis-could-accelerate-energy-transition)
 - EIA international data (API v2, annual, all countries and regions), JODI Oil World Database (monthly, free with attribution) and Ember monthly electricity data (CC-BY-4.0), pulled 10 Nov 2026. Raw files are in 01.1.
+- New free sources pulled 10 Nov 2026: ENTSOG Transparency Platform (EU gas flows), GIE ALSI (LNG terminals), World Bank Pink Sheet (CC-BY-4.0, updated 3 Nov 2026) and IMF (WEO macro via DataMapper; primary commodity prices via the IMF data API). ICE Futures Europe Commitments of Traders could not be pulled: ice.com blocks scripted downloads.

@@ -1,0 +1,35 @@
+name: Weekly European gas data and note
+# Pulls GIE AGSI+ (EU storage), GIE ALSI (LNG terminals) and ENTSOG (import flows), rebuilds the EU gas storage
+# model and the global LNG balance, drafts the weekly gas note and commits the outputs. Raw downloads stay out of the repo.
+# Needs one repository secret: GIE_API_KEY (Settings > Secrets and variables > Actions). All sources are free.
+on:
+  schedule:
+    - cron: "0 6 * * 5"   # Fridays 06:00 UTC, after GIE publishes Thursday's gas day
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gas-weekly
+  cancel-in-progress: false
+jobs:
+  gas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install openpyxl==3.1.5 matplotlib==3.9.2
+      - name: Pull data, rebuild models, draft the note
+        env:
+          GIE_API_KEY: ${{ secrets.GIE_API_KEY }}
+        run: python3 "ENERGY ANALYSIS/09_Code/Data_Pulls/20261110_Code_Gas_Weekly_Pipeline_Europe_v01.py" "ENERGY ANALYSIS"
+      - name: Commit outputs
+        run: |
+          git config user.name "gas-weekly-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A "ENERGY ANALYSIS"
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Weekly gas data, model and note draft $(date -u +%Y-%m-%d)"
+          git push
