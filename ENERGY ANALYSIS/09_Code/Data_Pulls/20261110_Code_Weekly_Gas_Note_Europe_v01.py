@@ -59,7 +59,7 @@ def main(raw, paths_csv, outdir, date):
     # imports by route: last 7 days vs same week last year, mcm/d
     routes = {r: (wavg({d: flows[d].get(r, 0) for d in flows}, ld), wavg({d: flows[d].get(r, 0) for d in flows}, ld, shift_years=1)) for r in model.ROUTES}
     tot_now = sum(v[0] for v in routes.values()); tot_ly = sum(v[1] or 0 for v in routes.values())
-    lng7, lng7ly = wavg(lng, ld), wavg(lng, ld, shift_years=1)
+    lng7, lng7ly = routes["LNG"]   # headline: ENTSOG LNG entry flows, the series the storage model uses (ALSI only in chart 3)
     nw7 = st.mean([stor[(ld - dt.timedelta(days=i)).isoformat()]["wd"] - stor[(ld - dt.timedelta(days=i)).isoformat()]["inj"] for i in range(7)])
     end = paths[-1]
 
@@ -102,7 +102,7 @@ def main(raw, paths_csv, outdir, date):
             if v is not None: xs.append(d); ys.append(v / TWH_PER_BCM * 1000)
         ax.plot(xs, ys, color=col, lw=1.8, label=lab)
     ax.set_ylabel("mcm/d (7-day avg)"); ax.xaxis.set_major_formatter(mdates.DateFormatter("%-d %b"))
-    ax.set_title("EU LNG send-out", loc="left", fontsize=10, color=INK); ax.legend(fontsize=7, frameon=False)
+    ax.set_title("EU LNG send-out, terminal data (GIE ALSI)", loc="left", fontsize=10, color=INK); ax.legend(fontsize=7, frameon=False)
     fig.text(0.01, 0.01, "Source: GIE ALSI", fontsize=7, color="#666666"); fig.tight_layout(rect=(0, 0.03, 1, 1))
     c3 = "%s_Chart_EU_LNG_SendOut.png" % date; fig.savefig(os.path.join(outdir, c3), dpi=150); plt.close(fig)
 
@@ -119,7 +119,7 @@ def main(raw, paths_csv, outdir, date):
 - **EU storage:** {pct:.1f}% full ({twh:.0f} TWh), against {stor[yago]['full']:.1f}% a year earlier and {stor[wk]['full']:.1f}% a week ago. Net withdrawals averaged {nw7:.2f} TWh/d over the last 7 days.
 - **Against the model:** {"the normal case had %.1f%% for this date, so storage is running %+.1f points against it." % (float(model_today['normal_full_pct']), gap) if model_today else "the model path starts after this date."} The cases end March at {float(end['warm_full_pct']):.0f}% (warm), {float(end['normal_full_pct']):.0f}% (normal) and {float(end['cold_full_pct']):.0f}% (cold).
 - **Imports:** {tot_now / TWH_PER_BCM * 1000:.0f} mcm/d over the last 7 days, {100 * (tot_now / tot_ly - 1):+.0f}% on the same week last year.
-- **LNG send-out:** {lng7 / TWH_PER_BCM * 1000:.0f} mcm/d (7-day average), {100 * (lng7 / lng7ly - 1):+.0f}% y/y.
+- **LNG:** {lng7 / TWH_PER_BCM * 1000:.0f} mcm/d into the EU grid (ENTSOG LNG entry points, 7-day average), {100 * (lng7 / lng7ly - 1):+.0f}% y/y. Terminal send-out reported by GIE ALSI is in the chart below and can differ by a few percent.
 
 ![EU storage vs model]({c1})
 
