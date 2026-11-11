@@ -16,6 +16,7 @@ How the model works (all in formulas, so any blue input can be changed in Excel)
   warm / cold      = 10th / 90th percentile of those winters around the trend (a 1-in-10 mild or cold winter)
   case call        = (normal call + slope x normal HDD x case HDD change) x (1 - demand response)
   supply           = pipeline and LNG imports by route (last 30 days, or your own level) + LNG case adjustment + Gulf LNG recovery ramp
+  geopolitical     = Reopening (Gulf recovery ramp, the main cases) and Prolonged restriction (no recovery), each with warm/normal/cold
   withdrawal       = call - supply, capped by what storage can deliver at that fill level; anything above the cap is unmet demand
 The script also computes the same model in Python so it can write the case paths to CSV for the weekly note.
 Keys: none needed. Sources: GIE AGSI+ (storage), ENTSOG Transparency Platform (flows), Open-Meteo archive (ERA5 temperatures, CC-BY 4.0).
@@ -52,6 +53,7 @@ FIT_MONTHS = (10, 11, 12, 1, 2, 3, 4)
 TEMPS = "01_Market_Foundations_and_Data/01.6_Weather_and_Climate_Data/OpenMeteo_Temperature_EU_Gas_Points_Europe_Daily.csv"
 LNG_ADJ = {"Warm": 0.15, "Normal": 0.0, "Cold": -0.25}          # TWh/d: a cold winter is usually cold in Asia too
 DEMAND_RESP = {"Warm": 0.0, "Normal": 0.0, "Cold": 0.0}         # extra price-driven demand cut, share of call
+PROLONGED_UPLIFT = 0.0                                           # Prolonged restriction case: no Gulf recovery
 GULF = {"uplift": 0.50, "start": dt.date(2026, 12, 1), "full": dt.date(2027, 3, 1)}  # extra LNG into the EU as Qatar recovers
 MAXW = {"cap": 11.0, "slope": 0.30}                              # deliverability: min(cap, slope x fill %)
 END = dt.date(2027, 3, 31)
@@ -365,7 +367,8 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
     put(r + 1, "Extra LNG into the EU at full recovery (TWh/d)", GULF["uplift"], "GulfUplift", "0.00", "0.50 TWh/d (about 47 mcm/d) restores EU LNG send-out to last year's level for the same weeks.")
     put(r + 2, "Recovery starts reaching EU terminals", GULF["start"], "GulfStart", "yyyy-mm-dd", "Qatari loadings were reported at about half of pre-war levels on 10 Nov (Bloomberg). Allow ~3 weeks of voyage.")
     put(r + 3, "Full recovery reached", GULF["full"], "GulfFull", "yyyy-mm-dd", "Linear ramp between the two dates. Damaged trains stay out (see the LNG balance).")
-    r += 5
+    put(r + 4, "Prolonged restriction case: extra LNG at full recovery (TWh/d)", PROLONGED_UPLIFT, "ProlongedUplift", "0.00", "0 = no Gulf recovery reaches Europe this winter (Hormuz stays restricted). The main cases above are the Reopening case.")
+    r += 6
     hdr(inp, r, ["Storage deliverability", "Value", "", "", "", "Note"])
     put(r + 1, "Maximum EU withdrawal (TWh/d)", MAXW["cap"], "MaxWCap", "0.0", "Highest daily withdrawals observed since 2021 were about 10.4-10.9 TWh/d at 40-70% full (GIE AGSI+).")
     put(r + 2, "Withdrawal capacity per point of fill (TWh/d per %)", MAXW["slope"], "MaxWSlope", "0.00", "Capacity falls as storage empties: about 9 TWh/d at 30% full, 6 at 20%, 3 at 10%. Fitted to observed peaks.")
@@ -398,19 +401,22 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
     for cs in CASES: heads += ["%s: %s" % (cs, s) for s in sub]
     hist = ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
     heads += ["Actual full % (data)", "Actual minus Normal (points)"] + ["Same date %s %%" % h for h in hist]
-    hdr(mod, 1, heads, [11, 7, 9, 8] + [9] * (8 * 3) + [9, 9] + [8] * 5)
+    for cs in CASES: heads += ["Prolonged %s: %s" % (cs, s) for s in sub]
+    hdr(mod, 1, heads, [11, 7, 9, 8] + [9] * (8 * 3) + [9, 9] + [8] * 5 + [9] * (8 * 3))
+    PRO0 = 5 + 24 + 7                                                   # first column of the Prolonged restriction blocks
+    BLOCKS = [(cs, 5 + 8 * k, "GulfUplift") for k, cs in enumerate(CASES)] + [(cs, PRO0 + 8 * k, "ProlongedUplift") for k, cs in enumerate(CASES)]
     nd = (END - start).days + 1
     for i in range(2, nd + 2):
         mod.cell(i, 1, "=StartDate" if i == 2 else "=A%d+1" % (i - 1)).number_format = "yyyy-mm-dd"
         mod.cell(i, 2, "=MONTH(A%d)*10+IF(DAY(A%d)<=15,1,2)" % (i, i))
         mod.cell(i, 3, "=INDEX(Calibration!$H$2:$H$11,MATCH(B%d,Calibration!$B$2:$B$11,0))" % i).number_format = "0.00"
         mod.cell(i, 4, "=IF(A%d<GulfStart,0,MIN(1,(A%d-GulfStart)/MAX(1,GulfFull-GulfStart)))" % (i, i)).number_format = "0.00"
-        for k, cs in enumerate(CASES):
-            c0 = 5 + 8 * k; col = {s: L(c0 + j) for j, s in enumerate(sub)}
+        for cs, c0, upl in BLOCKS:
+            col = {s: L(c0 + j) for j, s in enumerate(sub)}
             prev = "StartTWh" if i == 2 else "%s%d" % (col["Storage TWh"], i - 1)
             f = {
                 "Call": "=(C{i}+INDEX(Calibration!$I$2:$I$11,MATCH(B{i},Calibration!$B$2:$B$11,0))*Weather_{cs})*(1-DemandCut_{cs})",
-                "Supply": "=BaseImports+LNGAdj_{cs}+GulfUplift*D{i}",
+                "Supply": "=BaseImports+LNGAdj_{cs}+{upl}*D{i}",
                 "Needed from storage": "={c}{i}-{s}{i}",
                 "Max withdrawal": "=MIN(MaxWCap,MaxWSlope*100*{prev}/WGV)",
                 "Withdrawal": "=IF({n}{i}>0,MIN({n}{i},{m}{i}),MAX({n}{i},{prev}-WGV))",
@@ -419,7 +425,7 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
                 "Full %": "={t}{i}/WGV",
             }
             for j, s in enumerate(sub):
-                cell = mod.cell(i, c0 + j, f[s].format(i=i, cs=cs, c=col["Call"], s=col["Supply"], n=col["Needed from storage"], m=col["Max withdrawal"],
+                cell = mod.cell(i, c0 + j, f[s].format(i=i, cs=cs, upl=upl, c=col["Call"], s=col["Supply"], n=col["Needed from storage"], m=col["Max withdrawal"],
                                                        w=col["Withdrawal"], t=col["Storage TWh"], prev=prev))
                 cell.number_format = "0.0%" if s == "Full %" else ("0.0" if s == "Storage TWh" else "0.00")
         a = 5 + 24
@@ -432,6 +438,8 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
     last_row = nd + 1
     pct_cols = {cs: L(5 + 8 * k + 7) for k, cs in enumerate(CASES)}
     unmet_cols = {cs: L(5 + 8 * k + 5) for k, cs in enumerate(CASES)}
+    pro_pct = {cs: L(PRO0 + 8 * k + 7) for k, cs in enumerate(CASES)}
+    pro_unmet = {cs: L(PRO0 + 8 * k + 5) for k, cs in enumerate(CASES)}
 
     # ---- Summary
     summ.column_dimensions["A"].width = 44
@@ -467,6 +475,18 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
             "'Unmet demand' is gas the system needs but storage cannot physically deliver at that fill level. In practice prices rise until industry and power cut that much demand or more LNG arrives.",
             "This is a model, not a forecast. The published call is the one in the call log, with the date it was made."], 21):
         summ.cell(i, 1, t).font = NOTE
+    summ.cell(25, 1, "Geopolitical cases: the table above is Reopening (Gulf LNG recovers Dec-Mar). Below is Prolonged restriction (no recovery).").font = BOLD
+    hdr(summ, 26, ["Prolonged restriction", "Warm", "Normal", "Cold"])
+    for i, (lab, fn, fmt) in enumerate([
+            ("Storage full % on 31 Mar 2027", lambda cs: "=INDEX(%s,MATCH(EndDate,%s,0))" % (rng(pro_pct[cs]), dates), "0.0%"),
+            ("Storage TWh on 31 Mar 2027", lambda cs: "=%s27*WGV" % "BCD"[CASES.index(cs)], "0"),
+            ("Lowest fill % in the winter", lambda cs: "=MIN(%s)" % rng(pro_pct[cs]), "0.0%"),
+            ("First day below 20% full", lambda cs: "=IFERROR(INDEX(%s,MATCH(TRUE,INDEX(%s<0.2,0),0)),\"not reached\")" % (dates, rng(pro_pct[cs])), "d mmm yyyy"),
+            ("Unmet demand: storage cannot deliver (TWh)", lambda cs: "=SUM(%s)" % rng(pro_unmet[cs]), "0.0"),
+            ("Unmet demand as bcm", lambda cs: "=%s31/%s" % ("BCD"[CASES.index(cs)], TWH_PER_BCM), "0.0"),
+            ("Difference vs Reopening, end-March (points)", lambda cs: "=(%s27-%s8)*100" % (("BCD"[CASES.index(cs)],) * 2), "0.0")], 27):
+        summ.cell(i, 1, lab)
+        for j, cs in enumerate(CASES): summ.cell(i, 2 + j, fn(cs)).number_format = fmt
 
     ch = LineChart(); ch.title = "EU gas storage, % full: model cases vs past winters"; ch.y_axis.title = "% full"; ch.height = 10; ch.width = 24
     ch.y_axis.number_format = "0%"
@@ -498,12 +518,17 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
 
     # ---- Python mirror for the paths CSV
     paths = {cs: run_case(cs, start, s0, wgv, norm, wx, route30) for cs in CASES}
+    prolonged = {cs: run_case(cs, start, s0, wgv, norm, wx, route30, dict(GULF, uplift=PROLONGED_UPLIFT)) for cs in CASES}
     if paths_csv:
+        # Columns: warm/normal/cold_* = Reopening case (Gulf LNG recovers); prolonged_* = Prolonged restriction (no recovery).
         with open(paths_csv, "w", newline="") as f:
-            w = csv.writer(f); w.writerow(["vintage", "gas_day"] + ["%s_full_pct" % cs.lower() for cs in CASES] + ["%s_unmet_twh" % cs.lower() for cs in CASES])
+            w = csv.writer(f)
+            w.writerow(["vintage", "gas_day"] + ["%s_full_pct" % cs.lower() for cs in CASES] + ["%s_unmet_twh" % cs.lower() for cs in CASES] +
+                       ["prolonged_%s_full_pct" % cs.lower() for cs in CASES] + ["prolonged_%s_unmet_twh" % cs.lower() for cs in CASES])
             for i in range(len(paths["Normal"])):
-                w.writerow([s0_day, paths["Normal"][i]["date"].isoformat()] + [round(paths[cs][i]["pct"], 2) for cs in CASES] + [round(paths[cs][i]["unmet"], 3) for cs in CASES])
-    return dict(last=s0_day, s0=s0, wgv=wgv, norm=norm, base=base, route30=route30, full_w=full_w, paths=paths, wx=wx)
+                w.writerow([s0_day, paths["Normal"][i]["date"].isoformat()] + [round(paths[cs][i]["pct"], 2) for cs in CASES] + [round(paths[cs][i]["unmet"], 3) for cs in CASES] +
+                           [round(prolonged[cs][i]["pct"], 2) for cs in CASES] + [round(prolonged[cs][i]["unmet"], 3) for cs in CASES])
+    return dict(last=s0_day, s0=s0, wgv=wgv, norm=norm, base=base, route30=route30, full_w=full_w, paths=paths, prolonged=prolonged, wx=wx)
 
 
 if __name__ == "__main__":
@@ -522,4 +547,6 @@ if __name__ == "__main__":
     print("imports last 30d:", {k: round(v, 2) for k, v in r["route30"].items()}, "total", round(sum(r["route30"].values()), 2))
     for cs, p in r["paths"].items():
         e = p[-1]; print("%-6s 31 Mar %.1f%%  min %.1f%%  unmet %.1f TWh" % (cs, e["pct"], min(x["pct"] for x in p), sum(x["unmet"] for x in p)))
+    for cs, p in r["prolonged"].items():
+        e = p[-1]; print("Prolonged %-6s 31 Mar %.1f%%  unmet %.1f TWh" % (cs, e["pct"], sum(x["unmet"] for x in p)))
     print("wrote", out)
