@@ -1,9 +1,10 @@
-"""Weekly European gas pipeline: pull GIE AGSI+, GIE ALSI and ENTSOG, rebuild the storage model and LNG balance, draft the weekly note.
+"""Weekly European gas pipeline: pull GIE AGSI+, GIE ALSI, ENTSOG and Open-Meteo temperatures, rebuild the storage model and LNG balance, draft the weekly note.
 
 Usage (run by .github/workflows/gas-weekly.yml every Friday, or by hand):
     python3 20261110_Code_Gas_Weekly_Pipeline_Europe_v01.py <ENERGY ANALYSIS folder> [--raw DIR] [--date YYYYMMDD] [--skip-pull]
 
-Needs GIE_API_KEY in the environment (free key from agsi.gie.eu). ENTSOG needs no key.
+Needs GIE_API_KEY in the environment (free key from agsi.gie.eu). ENTSOG and Open-Meteo need no key.
+The rolling temperature history (01.6 .../OpenMeteo_Temperature_EU_Gas_Points_Europe_Daily.csv) is committed with the outputs.
 Raw CSVs go to <raw> (default: 01.1_Raw_Data_Downloads/Other_Sources/API_<date>/, which is kept out of the public repo).
 Outputs:
   01.4 .../<date>_Model_EU_Gas_Storage_Winter_Cases_Europe_Daily_v01.xlsx   (older dated copies move to 99_Archive)
@@ -39,11 +40,14 @@ def main():
         pull = mod("20261110_Code_Energy_Data_Pull_Global_v01.py")
         if not pull.GIE: sys.exit("Set GIE_API_KEY in the environment.")
         print("AGSI rows", pull.gie_pull(raw, date)); print("ALSI rows", pull.alsi_pull(raw, date)); print("ENTSOG rows", pull.entsog_pull(raw, date))
+    temps = os.path.join(root, "01_Market_Foundations_and_Data/01.6_Weather_and_Climate_Data/OpenMeteo_Temperature_EU_Gas_Points_Europe_Daily.csv")
+    if not a.skip_pull:
+        print("Open-Meteo days", pull.openmeteo_pull(raw, date, temps))
     bal = os.path.join(root, "01_Market_Foundations_and_Data/01.4_Supply_Demand_Balances")
     storage = mod("20261110_Code_Build_EU_Gas_Storage_Model_Europe_v01.py")
     out = os.path.join(bal, "%s_Model_EU_Gas_Storage_Winter_Cases_Europe_Daily_v01.xlsx" % date)
     latest = os.path.join(bal, "%s_Model_EU_Gas_Storage_Latest_Paths_Europe_Daily_v01.csv" % date)
-    r = storage.build(root, raw, out, None, latest)
+    r = storage.build(root, raw, out, None, latest, temps)
     for cs, p in r["paths"].items(): print("%-6s 31 Mar %.1f%%" % (cs, p[-1]["pct"]))
     print("archived", archive_older(bal, "*_Model_EU_Gas_Storage_Winter_Cases_Europe_Daily_v*.xlsx", out, root, "01.4_Supply_Demand_Balances"),
           archive_older(bal, "*_Model_EU_Gas_Storage_Latest_Paths_Europe_Daily_v*.csv", latest, root, "01.4_Supply_Demand_Balances"))
