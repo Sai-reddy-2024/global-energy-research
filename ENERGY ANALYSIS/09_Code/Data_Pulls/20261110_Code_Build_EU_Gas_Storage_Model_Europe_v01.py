@@ -37,7 +37,10 @@ for k in ["ITP-00297", "ITP-00491", "ITP-00247", "ITP-00501", "ITP-00493", "ITP-
 for k in ["ITP-00087", "ITP-00299", "ITP-00300", "ITP-00438", "ITP-00117", "ITP-00421", "ITP-10006", "ITP-10008"]: ROUTE[k] = "Ukraine border"
 for k in ["ITP-00274", "ITP-00046"]: ROUTE[k] = "Azerbaijan (TAP)"
 for k in ["ITP-00093", "ITP-00074", "ITP-00048", "ITP-00082"]: ROUTE[k] = "North Africa"
-SAME = {"ITP-00105": "Emden", "ITP-00081": "Emden", "ITP-00080": "Emden", "ITP-00188": "Dornum", "ITP-00126": "Dornum", "ITP-00525": "Dornum"}
+for k in ["ITP-00251", "ITP-00454", "ITP-00104", "ITP-00092", "ITP-00094"]: ROUTE[k] = "Russia, other routes"  # Nord Stream OPAL leg and Yamal (Belarus-Poland): needed for history before Sep 2022
+# Points where several operators report the same physical flow: take the largest report, not the sum
+SAME = {"ITP-00105": "Emden", "ITP-00081": "Emden", "ITP-00080": "Emden", "ITP-00188": "Dornum", "ITP-00126": "Dornum", "ITP-00525": "Dornum",
+        "ITP-00247": "Greifswald NEL", "ITP-00491": "Greifswald NEL", "ITP-00297": "Greifswald NEL", "ITP-00251": "Greifswald OPAL", "ITP-00454": "Greifswald OPAL"}
 ROUTES = ["LNG", "Norway", "North Africa", "Azerbaijan (TAP)", "Russia via TurkStream", "Russia, other routes", "Ukraine border"]
 
 # ---------------------------------------------------------------- default assumptions (blue cells in Inputs)
