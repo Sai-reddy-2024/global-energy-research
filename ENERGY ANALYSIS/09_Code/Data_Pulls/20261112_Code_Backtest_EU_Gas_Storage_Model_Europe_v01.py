@@ -2,11 +2,13 @@
 
 Usage:
     python3 20261112_Code_Backtest_EU_Gas_Storage_Model_Europe_v01.py <ENERGY ANALYSIS folder> <raw folder> [<raw folder> ...] [--out FILE] [--csv FILE]
-        [--vintage-md 11-09] [--years 2022 2023 2024 2025]
+        [--vintage-md 11-09] [--years 2023 2024 2025]
 
 <raw folder>s hold GIE AGSI+ and ENTSOG files (as written by the pull script); several folders are merged, so an older pull
 (e.g. 2021-2023) can sit beside the current one. The free ENTSOG API keeps only the last 5 years (from about 12 Nov 2021),
-so 2022 is the first testable vintage, and it is calibrated on one partial winter (2021-22) instead of two. Temperatures: the rolling Open-Meteo history in 01.6.
+so 2022 is the first testable vintage. It is left out by default (author's choice): winter 2022-23 followed the Russian
+supply cut-off and a price-driven demand collapse that no model calibrated on the winters before could see, and it has
+only one partial calibration winter. Run --years 2022 2023 2024 2025 to include it. Temperatures: the rolling Open-Meteo history in 01.6.
 
 For each year Y the model is rebuilt exactly as the live model would have been on the vintage date (default 9 Nov):
   - storage at the end of the vintage gas day; imports by route = the 30 days before it
@@ -75,7 +77,7 @@ def backtest_year(Y, md, stor, flows, hdd, calib_winters=2):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("root"); ap.add_argument("raws", nargs="+")
-    ap.add_argument("--out"); ap.add_argument("--csv"); ap.add_argument("--vintage-md", default="11-09"); ap.add_argument("--years", nargs="*", type=int, default=[2022, 2023, 2024, 2025])
+    ap.add_argument("--out"); ap.add_argument("--csv"); ap.add_argument("--vintage-md", default="11-09"); ap.add_argument("--years", nargs="*", type=int, default=[2023, 2024, 2025])
     a = ap.parse_args()
     md = tuple(int(x) for x in a.vintage_md.split("-"))
     stor, flows = load_many(a.raws)
@@ -131,7 +133,8 @@ def main():
                  "the two previous winters for the normal call, a weather fit from 1 January two years earlier, and the 30 winters before for normal, warm and cold weather (Open-Meteo).",
                  "No Gulf LNG recovery term is used (it is specific to 2026-27). 'With actual weather' reruns the normal case with the winter's real heating degree days:",
                  "what is left is the non-weather miss (imports that changed after the vintage, demand behaving differently from the two calibration winters).",
-                 "Limits: ENTSOG's free API keeps 5 years, so flows start 12 Nov 2021. Winter 2021-22 cannot be tested and 2022-23 is calibrated on one partial winter only.",
+                 "Winters covered: 2023-24 to 2025-26. Winter 2022-23 is left out (author's choice): it followed the Russian supply cut-off and a price-driven demand collapse,",
+                 "and ENTSOG's free API (5 years, from 12 Nov 2021) gives it only one partial calibration winter. Winter 2021-22 cannot be tested for the same reason.",
                  "'Variant, last winter only' calibrates the normal call on the single most recent winter instead of the last two.",
                  "Model figures are values from the backtest script (09_Code/Data_Pulls/20261112_Code_Backtest_EU_Gas_Storage_Model_Europe_v01.py); the error and summary cells are formulas."]
         for i, t in enumerate(notes, s + 7): ws.cell(i, 1, t).font = NOTE
