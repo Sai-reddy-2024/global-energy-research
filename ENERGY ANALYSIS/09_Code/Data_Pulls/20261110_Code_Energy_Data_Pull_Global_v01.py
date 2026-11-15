@@ -241,7 +241,7 @@ def alsi_pull(raw_dir, date, start="2021-01-01"):
 WX_POINTS = [("DE", "Kassel", 51.31, 9.48, 27), ("IT", "Milan", 45.46, 9.19, 19), ("FR", "Paris", 48.86, 2.35, 12), ("NL", "Utrecht", 52.09, 5.12, 8),
              ("PL", "Warsaw", 52.23, 21.01, 6), ("BE", "Brussels", 50.85, 4.35, 5), ("ES", "Madrid", 40.42, -3.70, 4), ("RO", "Bucharest", 44.43, 26.10, 4),
              ("HU", "Budapest", 47.50, 19.04, 4), ("AT", "Vienna", 48.21, 16.37, 3), ("CZ", "Prague", 50.08, 14.44, 3), ("SK", "Bratislava", 48.15, 17.11, 2)]
-WX_START = "1995-07-01"
+WX_START = "1990-07-01"
 
 def openmeteo_pull(raw_dir, date, hist_csv):
     """Daily mean 2 m temperature (deg C) at the WX_POINTS from the Open-Meteo archive API.

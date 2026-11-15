@@ -57,7 +57,7 @@ def main():
     print("archived", archive_older(tf, "*_Model_Global_LNG_Balance_Global_Quarterly_v*.xlsx", lng_out, root, "03.4_Trade_Flows_and_Sanctions"))
     calls = sorted(glob.glob(os.path.join(bal, "*_Model_EU_Gas_Storage_Call_Paths_*.csv")))
     note_dir = os.path.join(root, "08_Outputs/Reports/Weekly_Gas_Note")
-    print("note", mod("20261110_Code_Weekly_Gas_Note_Europe_v01.py").main(raw, calls[-1] if calls else latest, note_dir, date))
+    print("note", mod("20261110_Code_Weekly_Gas_Note_Europe_v01.py").main(raw, calls[-1] if calls else latest, note_dir, date, latest))
 
 
 if __name__ == "__main__":
