@@ -11,7 +11,7 @@ How the model works (all in formulas, so any blue input can be changed in Excel)
   call on storage  = EU consumption + net exports - EU production, measured in the data as imports + net storage withdrawal
   heating degree days (HDD) = gas-weighted average over 12 EU countries of (18 - mean temperature) on days at or below 15 C
   weather fit      = call = intercept + slope x HDD, fitted on October-April days since 2024 (Calibration sheet)
-  normal call      = average of the last two winters by half-month, corrected to normal weather with the fitted slope
+  normal call      = last winter's call by half-month (or the average of the last two: input CalibWinters), corrected to normal weather
   normal weather   = trend of the last 30 winters' HDD (they are getting warmer), by half-month
   warm / cold      = 10th / 90th percentile of those winters around the trend (a 1-in-10 mild or cold winter)
   case call        = (normal call + slope x normal HDD x case HDD change) x (1 - demand response)
@@ -51,6 +51,7 @@ WX = [("DE", "Kassel", 27), ("IT", "Milan", 19), ("FR", "Paris", 12), ("NL", "Ut
 #     weights: approximate share of EU household and services gas use (assumption, rounded); same points as the pull script
 HDD_BASE, HDD_THRESH = 18.0, 15.0                                # Eurostat convention: HDD = 18 - T when T <= 15 C, else 0
 CLIM_LAST, CLIM_N = 2025, 30                                     # climate base: the 30 winters ending 2025-26
+CALIB_WINTERS = 1                                                # normal call from the last winter only (backtest 2023-26: 5.1 pt error vs 11.0 with two)
 FIT_START = dt.date(2024, 1, 1)                                  # weather fit uses October-April days from here to the model start
 FIT_MONTHS = (10, 11, 12, 1, 2, 3, 4)
 TEMPS = "01_Market_Foundations_and_Data/01.6_Weather_and_Climate_Data/OpenMeteo_Temperature_EU_Gas_Points_Europe_Daily.csv"
@@ -138,7 +139,7 @@ def weather(hdd, call, full_w, norm_obs, start, s0_day):
     for m, h in HALVES:
         k = m * 10 + h
         nhdd[k] = st.mean([v for d, v in hdd.items() if half(dt.date.fromisoformat(d)) == k and years[0] <= int(winter_of(dt.date.fromisoformat(d))[:4]) <= years[-1]]) * scale
-        obs_hdd[k] = st.mean([st.mean([v for d, v in hdd.items() if half(dt.date.fromisoformat(d)) == k and winter_of(dt.date.fromisoformat(d)) == w]) for w in full_w])
+        obs_hdd[k] = st.mean([st.mean([v for d, v in hdd.items() if half(dt.date.fromisoformat(d)) == k and winter_of(dt.date.fromisoformat(d)) == w]) for w in full_w[-CALIB_WINTERS:]])
         norm[k] = norm_obs[k] + b * (nhdd[k] - obs_hdd[k])
     return dict(a=a, b=b, r2=r2, n=len(fd), years=years, tots=tots, trend=trend, case_hdd=case_hdd, adj=adj, scale=scale,
                 nhdd=nhdd, obs_hdd=obs_hdd, norm=norm, y0=y0)
@@ -168,7 +169,7 @@ def calibrate(stor, flows, last):
     for m, h in HALVES:
         k = m * 10 + h
         vals = [st.mean([call[d] for d in days if half(dt.date.fromisoformat(d)) == k and winter_of(dt.date.fromisoformat(d)) == w]) for w in full_w]
-        norm[k] = st.mean(vals)
+        norm[k] = st.mean(vals[-CALIB_WINTERS:])
     summer_years = sorted({d[:4] for d in days if d[5:7] in ("06", "07", "08") and d[:4] < last[:4] or (d[:4] == last[:4] and d[5:7] in ("06", "07", "08"))})[-2:]
     base = st.mean([call[d] for d in days if d[5:7] in ("06", "07", "08") and d[:4] in summer_years])
     l30 = [(ld - dt.timedelta(days=i)).isoformat() for i in range(30)]
@@ -270,7 +271,7 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
             cal.cell(i, 3 + j, '=AVERAGEIFS(%s,%s,B%d,%s,"%s")' % (C["call"], C["key"], i, C["winter"], w)).number_format = "0.00"
             cal.cell(i, 5 + j, '=AVERAGEIFS(%s,%s,B%d,%s,"%s")' % (C["hdd"], C["key"], i, C["winter"], w)).number_format = "0.00"
         cal.cell(i, 7, "=AVERAGEIFS(%s,%s,B%d,%s,\">=\"&ClimFirst,%s,\"<=\"&ClimLast)*HDDTrendScale" % (WC["hdd"], WC["key"], i, WC["wy"], WC["wy"])).number_format = "0.00"
-        cal.cell(i, 8, "=AVERAGE(C%d:D%d)+HeatSlope*(G%d-AVERAGE(E%d:F%d))" % (i, i, i, i, i)).number_format = "0.00"
+        cal.cell(i, 8, "=IF(CalibWinters=1,D%d+HeatSlope*(G%d-F%d),AVERAGE(C%d:D%d)+HeatSlope*(G%d-AVERAGE(E%d:F%d)))" % (i, i, i, i, i, i, i, i)).number_format = "0.00"
         cal.cell(i, 9, "=HeatSlope*G%d" % i).number_format = "0.00"
     hdr(cal, 13, ["Weather fit: call = intercept + slope x HDD", "", "Value", "", "", "", "", "", ""])
     fit_rows = [("Days in the fit (October-April, from FitStart to the model start)", "=COUNT(%s)" % C["fitx"], "0", None),
@@ -310,7 +311,8 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
     for cs, rr in (("Normal", rs + 2), ("Warm", rs + 3), ("Cold", rs + 4)): name(wb, "Weather_%s" % cs, "Calibration!$D$%d" % rr)
     notes = ["The call on imports and storage = EU consumption + net exports to non-EU neighbours - EU production. It is measured as imports (ENTSOG) + net withdrawal from storage (GIE AGSI+).",
              "HDD: gas-weighted average of 12 EU countries (one city each, weights in Inputs) of (18 - daily mean temperature) on days at or below 15 C. Temperatures: Open-Meteo archive (ERA5), CC-BY 4.0.",
-             "Normal call = the average of the last two complete winters (%s) by half-month, moved to normal weather: + slope x (normal HDD - HDD in those winters)." % " and ".join(full_w),
+             "Normal call = the last complete winter (%s) by half-month, moved to normal weather: + slope x (normal HDD - HDD that winter). Set CalibWinters to 2 in Inputs to average %s instead." % (full_w[-1], " and ".join(full_w)),
+             "Why one winter: the backtest (01.4 ..._Backtest_...xlsx) missed end-March by 5.1 points on average with one winter and 11.0 with two (winters 2023-24 to 2025-26): demand has been shifting year to year.",
              "Normal weather = the 30-winter trend for this winter (winters are getting milder), spread over half-months in the 30-winter average pattern.",
              "Warm and cold = the 10th and 90th percentile of the 30 winters around the trend: roughly a 1-in-10 mild or cold winter.",
              "Limitations: the fit rests on two winters of flow data (ENTSOG pull starts 2024); one city per country; it ignores wind and the lag between temperature and demand."]
@@ -385,10 +387,11 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
     hdr(inp, r, ["Weather", "Value", "", "", "", "Note"])
     put(r + 1, "Last winter of the 30-winter climate base (start year)", CLIM_LAST, "ClimLast", "0", "2025 = winter 2025-26. The base is the 30 winters ending there.")
     inp.cell(r + 2, 1, "First winter of the climate base"); inp.cell(r + 2, 2, "=ClimLast-%d" % (CLIM_N - 1)); name(wb, "ClimFirst", "Inputs!$B$%d" % (r + 2))
+    put(r + 6, "Calibration winters for the normal call (1 or 2)", CALIB_WINTERS, "CalibWinters", "0", "1 = last winter only (backtest error 5.1 points); 2 = average of the last two (11.0).")
     put(r + 3, "Weather fit starts", FIT_START, "FitStart", "yyyy-mm-dd", "October-April days from here to the model start (ENTSOG flows start 2024-01-01).")
     put(r + 4, "HDD base temperature (C)", HDD_BASE, "HDDBase", "0.0", "Eurostat convention.")
     put(r + 5, "HDD threshold (C): no heating above", HDD_THRESH, "HDDThreshold", "0.0", "Eurostat convention.")
-    r += 7
+    r += 8
     inp.cell(r, 1, "Weights by country (share of EU household and services gas use)").font = BOLD
     for j, (c, city, w) in enumerate(WX):
         inp.column_dimensions[L(2 + j)].width = max(inp.column_dimensions[L(2 + j)].width or 0, 9)
@@ -509,7 +512,7 @@ def build(root, raw, out, start=None, paths_csv=None, temps=None):
             "How to use: change the blue cells in Inputs. Summary and the chart update. Model_Daily holds the day-by-day path for each case.",
             "Logic: storage(t) = storage(t-1) - withdrawal(t); withdrawal = call on storage - imports, capped by deliverability at that fill level.",
             "Call on storage = consumption + net exports - EU production, measured as imports + net withdrawal (Calibration and Data_Daily).",
-            "Normal call = average of the last two full winters by half-month, corrected to normal weather with the fitted demand-temperature slope (Calibration).",
+            "Normal call = last full winter by half-month (CalibWinters in Inputs), corrected to normal weather with the fitted demand-temperature slope (Calibration).",
             "Weather cases: 1-in-10 mild or cold winters by gas-weighted heating degree days, around the 30-winter trend (Open-Meteo temperatures, Weather_Daily).",
             "Actual full % fills in automatically as new data is pulled; 'Actual minus Normal' shows how far reality is running from the normal case.",
             "",
