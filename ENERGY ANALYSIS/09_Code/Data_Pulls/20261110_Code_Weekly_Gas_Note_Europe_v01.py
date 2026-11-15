@@ -46,7 +46,7 @@ def wavg(series, end, days=7, shift_years=0):
     return st.mean(xs) if xs else None
 
 
-def main(raw, paths_csv, outdir, date):
+def main(raw, paths_csv, outdir, date, latest_csv=None):
     os.makedirs(outdir, exist_ok=True)
     stor, flows = model.load(raw); lng = alsi_eu(raw)
     last = max(d for d in stor if d in flows); ld = dt.date.fromisoformat(last)
@@ -62,6 +62,8 @@ def main(raw, paths_csv, outdir, date):
     lng7, lng7ly = routes["LNG"]   # headline: ENTSOG LNG entry flows, the series the storage model uses (ALSI only in chart 3)
     nw7 = st.mean([stor[(ld - dt.timedelta(days=i)).isoformat()]["wd"] - stor[(ld - dt.timedelta(days=i)).isoformat()]["inj"] for i in range(7)])
     end = paths[-1]
+    lat = list(csv.DictReader(open(latest_csv))) if latest_csv and os.path.abspath(latest_csv) != os.path.abspath(paths_csv) else None
+    latest_txt = (" The latest run (vintage %s) gives %.0f%%, %.0f%% and %.0f%%." % (lat[0]["vintage"], float(lat[-1]["warm_full_pct"]), float(lat[-1]["normal_full_pct"]), float(lat[-1]["cold_full_pct"]))) if lat else ""
 
     # ---- chart 1: storage vs model and past winters
     fig, ax = plt.subplots(figsize=(7.2, 3.4))
@@ -117,7 +119,7 @@ def main(raw, paths_csv, outdir, date):
 
 ## The numbers
 - **EU storage:** {pct:.1f}% full ({twh:.0f} TWh), against {stor[yago]['full']:.1f}% a year earlier and {stor[wk]['full']:.1f}% a week ago. Net withdrawals averaged {nw7:.2f} TWh/d over the last 7 days.
-- **Against the model:** {"the normal case had %.1f%% for this date, so storage is running %+.1f points against it." % (float(model_today['normal_full_pct']), gap) if model_today else "the model path starts after this date."} The cases end March at {float(end['warm_full_pct']):.0f}% (warm), {float(end['normal_full_pct']):.0f}% (normal) and {float(end['cold_full_pct']):.0f}% (cold).
+- **Against the model:** {"the normal case had %.1f%% for this date, so storage is running %+.1f points against it." % (float(model_today['normal_full_pct']), gap) if model_today else "the model path starts after this date."} The live call's model run (vintage {vintage}) ends March at {float(end['warm_full_pct']):.0f}% (warm), {float(end['normal_full_pct']):.0f}% (normal) and {float(end['cold_full_pct']):.0f}% (cold).{latest_txt}
 - **Imports:** {tot_now / TWH_PER_BCM * 1000:.0f} mcm/d over the last 7 days, {100 * (tot_now / tot_ly - 1):+.0f}% on the same week last year.
 - **LNG:** {lng7 / TWH_PER_BCM * 1000:.0f} mcm/d into the EU grid (ENTSOG LNG entry points, 7-day average), {100 * (lng7 / lng7ly - 1):+.0f}% y/y. Terminal send-out reported by GIE ALSI is in the chart below and can differ by a few percent.
 
